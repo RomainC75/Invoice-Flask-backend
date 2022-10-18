@@ -4,6 +4,7 @@ WORKDIR /app
 EXPOSE 5000
 
 ENV FLASK_DEBUG 1
+ENV PYTHONUNBUFFERED 0
 
 COPY requirements.txt .
 RUN pip3 install -r requirements.txt
