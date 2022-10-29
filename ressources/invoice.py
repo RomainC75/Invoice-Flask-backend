@@ -7,19 +7,39 @@ from db import db
 
 from schemas import InvoiceSchema
 from models import SenderAddressModel, ClientAddressModel, InvoiceModel, ItemModel, UserModel
-from flask_jwt_extended import create_access_token, get_jwt, jwt_required, get_jwt_identity
+from flask_jwt_extended import create_access_token, get_jwt, jwt_required, get_jwt_identity, decode_token
 
 from datetime import datetime
 
 blp = Blueprint('Invoices', __name__, description="Operations on stores")
 
-@blp.route("/invoice")
+val=1
+
+@blp.route('/test/')
 class Invoice(MethodView):
+    def get(self):
+        global val
+        val+=1
+        return {"message":val},200
+
+@blp.route("/invoice/")
+class Invoice(MethodView):
+    @blp.response(200,InvoiceSchema(many=True))
+    @jwt_required()    
+    def get(self):    
+        current_user = get_jwt_identity()
+        #store = StoreModel.query.get_or_404(int(store_id))
+        res = InvoiceModel.query.filter(InvoiceModel.user_id==current_user)
+        return res
+
+
+
     @jwt_required()
     @blp.arguments(InvoiceSchema)
     def post(self, data):
         print(request.headers)
         current_user_id = get_jwt_identity()
+
         items = data["items"]
         del data["items"]
 
@@ -54,7 +74,6 @@ class Invoice(MethodView):
             print(item)
             db.session.add(item)
             db.session.commit()
-
         return data,201
 
 # unprotected
@@ -64,11 +83,28 @@ class Invoice(MethodView):
     @blp.response(200, InvoiceSchema)
     def get(self, invoice_id):
         current_user_id = get_jwt_identity()
-        data = InvoiceModel.query.get_or_404(invoice_id)
-        print('===> data : ',data)
-        return data,200
+        # current_user_id = 1
+        invoice = InvoiceModel.query.get_or_404(invoice_id)
+        if(invoice.user_id!=current_user_id):
+            abort(400, message = "you don't have the right to get this invoice !")
+        return invoice,200
 
+    @jwt_required()
+    @blp.response(200, InvoiceSchema)
+    def put(self, invoice_id):
+        current_user_id = get_jwt_identity()
+        invoice = InvoiceModel.query.get_or_404(invoice_id)
+        if(invoice.user_id!=current_user_id):
+            abort(400, message = "you don't have the right to update this invoice !")
+        
+
+    @jwt_required()
     def delete(self, invoice_id):
+        current_user_id = get_jwt_identity()
+        invoice = InvoiceModel.query.get_or_404(invoice_id)
+        if(invoice.user_id!=current_user_id):
+            abort(400, message = "you don't have the right to delete this invoice !")
         InvoiceModel.query.filter_by(id=invoice_id).delete()
         db.session.commit()
         return {"message":"invoice deleted!"}
+

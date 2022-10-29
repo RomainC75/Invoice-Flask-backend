@@ -6,7 +6,6 @@ class ItemModel(db.Model):
     name = db.Column(db.String(80))
     quantity = db.Column(db.Integer())
     price = db.Column(db.Float())
-    # invoice = db.relationship("InvoiceModel", back_populates="items")
     invoice_id = db.Column(
         db.Integer, db.ForeignKey("invoices.id"), unique=False, nullable=False
     )

@@ -8,8 +8,5 @@ class UserModel(db.Model):
     username = db.Column(db.String(80), unique=True)
     password = db.Column(db.String(), nullable=False)
     avatar_url = db.Column(db.String())
-
-    # invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id") )
-    # invoices = db.relationship("InvoiceModel", back_populates="invoices" )
     invoices = db.relationship("InvoiceModel", back_populates="user" )
     

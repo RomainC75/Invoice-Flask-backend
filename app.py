@@ -5,15 +5,18 @@ from flask_smorest import Api
 from dotenv import load_dotenv
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
-
+from flask_cors import CORS
+import logging
 import sys
 print('It is working',file=sys.stderr)
-
-
 
 load_dotenv()
 
 app = Flask(__name__)
+
+cors = CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+logging.getLogger('flask_cors').level = logging.DEBUG
+
 
 #let see errors in dependancies
 app.config["PROPAGATE_EXCEPTIONS"] = True
@@ -34,9 +37,9 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"]=False
 db.init_app(app)
 migrate=Migrate(app,db)
 
-
-
 api = Api(app)
+
+
 
 app.config["JWT_SECRET_KEY"] = "280601218860886714758979442484081064733"
 jwt = JWTManager(app)

@@ -4,8 +4,6 @@ from datetime import datetime
 class InvoiceModel(db.Model):
     __tablename__ = "invoices"
     id = db.Column(db.Integer, primary_key=True)
-    # user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=False, nullable=False)
-    # createdAt = db.Column(db.String(80), nullable=False)
     createdAt = db.Column(db.DateTime, default=datetime.utcnow)
     paymentDue = db.Column(db.DateTime)
     description= db.Column(db.String(300), nullable=False)

@@ -10,9 +10,4 @@ class SenderAddressModel(db.Model):
     city = db.Column(db.String(80))
     postCode = db.Column(db.String(80))
     country = db.Column(db.String(80))
-
-    # invoice_id = db.Column(
-    #     db.Integer, db.ForeignKey("invoices.id"), nullable=False
-    # )
-    # invoice = db.relationship("InvoiceModel")
     invoices = db.relationship("InvoiceModel", back_populates="senderAddress", lazy="dynamic")
