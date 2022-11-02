@@ -90,13 +90,49 @@ class Invoice(MethodView):
         return invoice,200
 
     @jwt_required()
+    @blp.arguments(InvoiceSchema)
     @blp.response(200, InvoiceSchema)
-    def put(self, invoice_id):
-        current_user_id = get_jwt_identity()
-        invoice = InvoiceModel.query.get_or_404(invoice_id)
-        if(invoice.user_id!=current_user_id):
-            abort(400, message = "you don't have the right to update this invoice !")
+    def put(self, invoice_data, invoice_id):
         
+        current_user_id = get_jwt_identity()
+        print("new : ", invoice_data['items'])
+       
+        oldInvoice = InvoiceModel.query.get_or_404(invoice_id)
+        if(oldInvoice.user_id != current_user_id):
+            abort(400, message = "you don't have the right to update this invoice !")
+
+        # create new items wich do not have an id
+        for i, newItem in enumerate(invoice_data['items']):
+            if( 'id' not in newItem.keys()):
+                print("very new : ", i, newItem)
+                invoice_data['items']= [ item for j, item in enumerate(invoice_data['items']) if j!=i ]
+
+        print("filtered : ",invoice_data['items'])
+
+        # remove items in the db !
+        for oldItem in list(oldInvoice.items):
+            print('iteration : ' , oldItem.id , [ newItem['id'] for newItem in invoice_data['items'] if 'id' in newItem.keys() ])
+            if oldItem.id not in [ newItem['id'] for newItem in invoice_data['items'] if 'id' in newItem.keys() ]  :
+                print(oldItem.id , " has to be removed ")
+
+        # update items
+        # for updatedItem in list(invoice_data['items']):
+            
+           
+
+        # invoice=InvoiceModel(id=invoice_id,**invoice_data)
+        # db.session.add(invoice)
+        # db.sesson.commit()
+        return oldInvoice
+
+
+
+
+
+
+
+
+
 
     @jwt_required()
     def delete(self, invoice_id):
