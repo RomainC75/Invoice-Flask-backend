@@ -14,6 +14,7 @@ from utils.items import add_new_item, update_item, remove_item
 from datetime import datetime
 
 from db import engine
+from utils.address import update_senderAddress, update_clientAddress
 
 blp = Blueprint('Invoices', __name__, description="Operations on stores")
 
@@ -112,73 +113,37 @@ class Invoice(MethodView):
         print("received_items_list", received_items_list)
         del invoice_data['items']
 
-        # REMOVE OLD !
         for oldItem in list(oldInvoice.items):
             # print('iteration : ' , oldItem.id , [ newItem['id'] for newItem in received_items_list if 'id' in newItem.keys() ])
             if oldItem.id not in [ newItem['id'] for newItem in received_items_list if 'id' in newItem.keys() ]  :
-                print("ids to remove from old : ", oldItem.id)
+                # print("ids to remove from old : ", oldItem.id)
                 remove_item(oldItem.id)
                 
-        # ADD NEW
         for i, newItem in enumerate(received_items_list):
             if( 'id' not in newItem.keys()):
-                print(f'==> very new  //  i : {i} , {newItem}')
+                # print(f'==> very new  //  i : {i} , {newItem}')
                 add_new_item(newItem,invoice_id)
 
         received_items_list = list( filter( lambda item : 'id' in item , received_items_list ) )        
 
-        #UPDATE
         for item in received_items_list:
-            print("to update : ", item['id'] , item)
             update_item(item)
 
-
-        # #=======sender address ========
-        # senderAddress = invoice_data['senderAddress']
-        # print("sender address : ", senderAddress)
+        #senderAddress
+        new_senderAddress = invoice_data['senderAddress']
+        update_senderAddress(new_senderAddress,oldInvoice.senderAddress_id)
+        del invoice_data['senderAddress']
+        #clientAddress
+        new_clientAddress = invoice_data['clientAddress']
+        update_clientAddress(new_clientAddress,oldInvoice.clientAddress_id)
+        del invoice_data['clientAddress']
         
-        # address=SenderAddressModel(**senderAddress)
-        # # print("address.items", address.items)
-        # print("===========================================")
-        # # db.session.query(SenderAddressModel).filter(SenderAddressModel.id==oldInvoice.senderAddress.id).update(address)
-        
-        # with engine.connect() as conn:
-        #     ans = conn.execute(text(f"UPDATE `senderAddresses` SET `name`='{senderAddress['name']}',`street`='{senderAddress['street']}',`city`='{senderAddress['city']}',`postCode`='{senderAddress['postCode']}',`country`='{senderAddress['country']}' WHERE `id`='{oldInvoice.senderAddress.id}'"))
-        #     print("ANS : ", ans.__dict__.keys())
-
-        # # db.session.add(address)
-        # # db.session.commit()
-        
-        # del invoice_data['senderAddress']
-        
-
-        # #=======client address ========
-        # clientAddress = invoice_data['clientAddress']
-        # print("client address : ", clientAddress)
-        # address=ClientAddressModel(**clientAddress)
-        # with engine.connect() as conn:
-        #     ans = conn.execute(text(f"UPDATE `clientAddresses` SET `name`='{senderAddress['name']}',`street`='{senderAddress['street']}',`city`='{senderAddress['city']}',`postCode`='{senderAddress['postCode']}',`country`='{senderAddress['country']}' WHERE `id`='{oldInvoice.senderAddress.id}'"))
-        #     print("ANS : ", ans.__dict__.keys())
-        # del invoice_data['clientAddress']
-        # # db.session.add(address)
-        # # db.session.commit()
-
-        # print("rest of the data : ", invoice_data)
 
 
         # invoice=InvoiceModel(id=invoice_id,**invoice_data)
         # db.session.add(invoice)
         # db.sesson.commit()
         return oldInvoice
-
-
-
-
-
-
-
-
-
 
     @jwt_required()
     def delete(self, invoice_id):
