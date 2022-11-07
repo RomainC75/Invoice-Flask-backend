@@ -39,8 +39,6 @@ migrate=Migrate(app,db)
 
 api = Api(app)
 
-
-
 app.config["JWT_SECRET_KEY"] = "280601218860886714758979442484081064733"
 jwt = JWTManager(app)
 

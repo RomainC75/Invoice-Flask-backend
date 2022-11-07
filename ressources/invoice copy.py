@@ -9,8 +9,6 @@ from schemas import InvoiceSchema
 from models import SenderAddressModel, ClientAddressModel, InvoiceModel, ItemModel, UserModel
 from flask_jwt_extended import create_access_token, get_jwt, jwt_required, get_jwt_identity, decode_token
 
-from utils.items import add_new_item, update_item, remove_item
-
 from datetime import datetime
 
 from db import engine
@@ -99,71 +97,80 @@ class Invoice(MethodView):
     def put(self, invoice_data, invoice_id):
         
         current_user_id = get_jwt_identity()
-        
+        print("new : ", invoice_data['items'])
        
         oldInvoice = InvoiceModel.query.get_or_404(invoice_id)
-        oldInvoice_id = oldInvoice.id
-        
+        print(f'==> OLD : {oldInvoice}')
         if(oldInvoice.user_id != current_user_id):
             abort(400, message = "you don't have the right to update this invoice !")
-
         #=======Items ========
-        received_items_list=invoice_data['items']
-        print("received_items_list", received_items_list)
-        del invoice_data['items']
-
-        # REMOVE OLD !
-        for oldItem in list(oldInvoice.items):
-            # print('iteration : ' , oldItem.id , [ newItem['id'] for newItem in received_items_list if 'id' in newItem.keys() ])
-            if oldItem.id not in [ newItem['id'] for newItem in received_items_list if 'id' in newItem.keys() ]  :
-                print("ids to remove from old : ", oldItem.id)
-                remove_item(oldItem.id)
-                
-        # ADD NEW
-        for i, newItem in enumerate(received_items_list):
+        # create new items which have no Id
+        for i, newItem in enumerate(invoice_data['items']):
             if( 'id' not in newItem.keys()):
                 print(f'==> very new  //  i : {i} , {newItem}')
-                add_new_item(newItem,invoice_id)
+                #ADD NEW
+                
+                with engine.connect() as conn:
+                    ans = conn.execute(text(f" INSERT INTO `items` (`name`, `price`, `quantity`, `invoice_id`) VALUES ('{newItem['name']}', '{newItem['price']}', '{newItem['quantity']}', '{oldInvoice.id}' )   " ))
+                    print( "ANS : " , ans.__dict__.keys() )
 
-        received_items_list = list( filter( lambda item : 'id' in item , received_items_list ) )        
-
-        #UPDATE
-        for item in received_items_list:
-            print("to update : ", item['id'] , item)
-            update_item(item)
+                #remove in the list
+                invoice_data['items']= [ item for j, item in enumerate(invoice_data['items']) if j!=i ]
 
 
-        # #=======sender address ========
-        # senderAddress = invoice_data['senderAddress']
-        # print("sender address : ", senderAddress)
+        print("filtered : ",invoice_data['items'])
+
+        # remove items in the db !
+        for oldItem in list(oldInvoice.items):
+            print('iteration : ' , oldItem.id , [ newItem['id'] for newItem in invoice_data['items'] if 'id' in newItem.keys() ])
+            if oldItem.id not in [ newItem['id'] for newItem in invoice_data['items'] if 'id' in newItem.keys() ]  :
+                print(f'==> {oldItem.id} has to be removed ')
+                #REMOVE FROM DB
+                with engine.connect() as conn:
+                    ans = conn.execute(text(f"DELETE FROM `items` WHERE `id`='{oldItem.id}'"))
+
+        # update items
+        for itemToUpdate in list(invoice_data['items']):
+            print(f'update : {itemToUpdate}')
+            #UPDATE ITEM
+            if 'id' in itemToUpdate:
+                with engine.connect() as conn:
+                    ans = conn.execute(text(f" UPDATE `items` SET `name`='{itemToUpdate['name']}',`price`='{itemToUpdate['price']}',`quantity`='{itemToUpdate['quantity']}' WHERE `id`='{itemToUpdate['id']}' "))
+                    print( "ANS : " , ans.__dict__.keys() )
+
+        del invoice_data['items']
+
+        #=======sender address ========
+        senderAddress = invoice_data['senderAddress']
+        print("sender address : ", senderAddress)
         
-        # address=SenderAddressModel(**senderAddress)
-        # # print("address.items", address.items)
-        # print("===========================================")
-        # # db.session.query(SenderAddressModel).filter(SenderAddressModel.id==oldInvoice.senderAddress.id).update(address)
+        address=SenderAddressModel(**senderAddress)
+        # print("address.items", address.items)
+        print("===========================================")
+        # db.session.query(SenderAddressModel).filter(SenderAddressModel.id==oldInvoice.senderAddress.id).update(address)
         
-        # with engine.connect() as conn:
-        #     ans = conn.execute(text(f"UPDATE `senderAddresses` SET `name`='{senderAddress['name']}',`street`='{senderAddress['street']}',`city`='{senderAddress['city']}',`postCode`='{senderAddress['postCode']}',`country`='{senderAddress['country']}' WHERE `id`='{oldInvoice.senderAddress.id}'"))
-        #     print("ANS : ", ans.__dict__.keys())
+        with engine.connect() as conn:
+            ans = conn.execute(text(f"UPDATE `senderAddresses` SET `name`='{senderAddress['name']}',`street`='{senderAddress['street']}',`city`='{senderAddress['city']}',`postCode`='{senderAddress['postCode']}',`country`='{senderAddress['country']}' WHERE `id`='{oldInvoice.senderAddress.id}'"))
+            print("ANS : ", ans.__dict__.keys())
 
-        # # db.session.add(address)
-        # # db.session.commit()
+        # db.session.add(address)
+        # db.session.commit()
         
-        # del invoice_data['senderAddress']
+        del invoice_data['senderAddress']
         
 
-        # #=======client address ========
-        # clientAddress = invoice_data['clientAddress']
-        # print("client address : ", clientAddress)
-        # address=ClientAddressModel(**clientAddress)
-        # with engine.connect() as conn:
-        #     ans = conn.execute(text(f"UPDATE `clientAddresses` SET `name`='{senderAddress['name']}',`street`='{senderAddress['street']}',`city`='{senderAddress['city']}',`postCode`='{senderAddress['postCode']}',`country`='{senderAddress['country']}' WHERE `id`='{oldInvoice.senderAddress.id}'"))
-        #     print("ANS : ", ans.__dict__.keys())
-        # del invoice_data['clientAddress']
-        # # db.session.add(address)
-        # # db.session.commit()
+        #=======client address ========
+        clientAddress = invoice_data['clientAddress']
+        print("client address : ", clientAddress)
+        address=ClientAddressModel(**clientAddress)
+        with engine.connect() as conn:
+            ans = conn.execute(text(f"UPDATE `clientAddresses` SET `name`='{senderAddress['name']}',`street`='{senderAddress['street']}',`city`='{senderAddress['city']}',`postCode`='{senderAddress['postCode']}',`country`='{senderAddress['country']}' WHERE `id`='{oldInvoice.senderAddress.id}'"))
+            print("ANS : ", ans.__dict__.keys())
+        del invoice_data['clientAddress']
+        # db.session.add(address)
+        # db.session.commit()
 
-        # print("rest of the data : ", invoice_data)
+        print("rest of the data : ", invoice_data)
 
 
         # invoice=InvoiceModel(id=invoice_id,**invoice_data)

@@ -2,8 +2,8 @@
 from marshmallow import Schema, fields, validate
 
 class AddressSchema(Schema):
-    # id = fields.Integer(required=True, dump_only=True)
-    id = fields.Integer(required=True)
+    id = fields.Integer(required=True, dump_only=True)
+    # id = fields.Integer(required=True)
     name = fields.Str()
     street = fields.Str()
     city = fields.Str()
