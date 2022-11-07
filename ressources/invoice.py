@@ -9,12 +9,13 @@ from schemas import InvoiceSchema
 from models import SenderAddressModel, ClientAddressModel, InvoiceModel, ItemModel, UserModel
 from flask_jwt_extended import create_access_token, get_jwt, jwt_required, get_jwt_identity, decode_token
 
-from utils.items import add_new_item, update_item, remove_item
+from utils.items import add_new_item, update_item, remove_item, big_update
+from utils.address import update_senderAddress, update_clientAddress
+from utils.invoice import update_invoice
 
 from datetime import datetime
 
 from db import engine
-from utils.address import update_senderAddress, update_clientAddress
 
 blp = Blueprint('Invoices', __name__, description="Operations on stores")
 
@@ -98,37 +99,15 @@ class Invoice(MethodView):
     @blp.arguments(InvoiceSchema)
     @blp.response(200, InvoiceSchema)
     def put(self, invoice_data, invoice_id):
-        
         current_user_id = get_jwt_identity()
-        
-       
         oldInvoice = InvoiceModel.query.get_or_404(invoice_id)
-        oldInvoice_id = oldInvoice.id
-        
         if(oldInvoice.user_id != current_user_id):
             abort(400, message = "you don't have the right to update this invoice !")
-
-        #=======Items ========
+        
+        #items
         received_items_list=invoice_data['items']
-        print("received_items_list", received_items_list)
         del invoice_data['items']
-
-        for oldItem in list(oldInvoice.items):
-            # print('iteration : ' , oldItem.id , [ newItem['id'] for newItem in received_items_list if 'id' in newItem.keys() ])
-            if oldItem.id not in [ newItem['id'] for newItem in received_items_list if 'id' in newItem.keys() ]  :
-                # print("ids to remove from old : ", oldItem.id)
-                remove_item(oldItem.id)
-                
-        for i, newItem in enumerate(received_items_list):
-            if( 'id' not in newItem.keys()):
-                # print(f'==> very new  //  i : {i} , {newItem}')
-                add_new_item(newItem,invoice_id)
-
-        received_items_list = list( filter( lambda item : 'id' in item , received_items_list ) )        
-
-        for item in received_items_list:
-            update_item(item)
-
+        big_update(received_items_list, oldInvoice.items, oldInvoice.id)
         #senderAddress
         new_senderAddress = invoice_data['senderAddress']
         update_senderAddress(new_senderAddress,oldInvoice.senderAddress_id)
@@ -137,12 +116,8 @@ class Invoice(MethodView):
         new_clientAddress = invoice_data['clientAddress']
         update_clientAddress(new_clientAddress,oldInvoice.clientAddress_id)
         del invoice_data['clientAddress']
-        
-
-
-        # invoice=InvoiceModel(id=invoice_id,**invoice_data)
-        # db.session.add(invoice)
-        # db.sesson.commit()
+        #invoice
+        update_invoice(invoice_data, oldInvoice.id)
         return oldInvoice
 
     @jwt_required()
