@@ -121,12 +121,30 @@ class Invoice(MethodView):
         return oldInvoice
 
     @jwt_required()
+
     def delete(self, invoice_id):
         current_user_id = get_jwt_identity()
-        invoice = InvoiceModel.query.get_or_404(invoice_id)
-        if(invoice.user_id!=current_user_id):
+        oldInvoice = InvoiceModel.query.get_or_404(invoice_id)
+        if(oldInvoice.user_id!=current_user_id):
             abort(400, message = "you don't have the right to delete this invoice !")
-        InvoiceModel.query.filter_by(id=invoice_id).delete()
-        db.session.commit()
-        return {"message":"invoice deleted!"}
 
+        for item in oldInvoice.items:
+            print("items : ", item.id)
+            item = ItemModel.query.get_or_404(item.id)
+            db.session.delete(item)
+            db.session.commit()
+
+        invoice = InvoiceModel.query.get_or_404(oldInvoice.id)
+        db.session.delete(invoice)
+        db.session.commit()
+
+        senderAddress = SenderAddressModel.query.get_or_404(oldInvoice.senderAddress_id)
+        db.session.delete(senderAddress)
+        db.session.commit()
+        
+        clientAddress = ClientAddressModel.query.get_or_404(oldInvoice.clientAddress_id)
+        db.session.delete(clientAddress)
+        db.session.commit()
+
+            
+        return {"message":"invoice deleted!"}
