@@ -17,6 +17,8 @@ app = Flask(__name__)
 cors = CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 logging.getLogger('flask_cors').level = logging.DEBUG
 
+# !!! to verify !!
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 #let see errors in dependancies
 app.config["PROPAGATE_EXCEPTIONS"] = True
